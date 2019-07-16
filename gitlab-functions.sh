@@ -69,10 +69,10 @@ function create_or_update_gitlab_projects() {
            --form "path=$GITLAB_PROJECT_NAME" \
            --form "description=$GITHUB_DESC $GITHUB_HOME (backup de $GITHUB_URL)" \
            --form "visibility=public" \
-           --form "archived=true" \
+           --form "archived=false" \
            --form "merge_requests_enabled=false" \
            --form "issues_enabled=false" \
-           --form "wiki_enabled=false" \
+           --form "wiki_enabled=true" \
            --form "snippets_enabled=false" \
            --form "jobs_enabled=false" \
            $GITLAB_HTTP_BASEURL/api/v4/projects
@@ -84,18 +84,19 @@ function create_or_update_gitlab_projects() {
          --form "name=$GITLAB_PROJECT_NAME" \
          --form "description=$GITHUB_DESC $GITHUB_HOME (backup de $GITHUB_URL)" \
          --form "visibility=public" \
-         --form "archived=true" \
+         --form "archived=false" \
          --form "merge_requests_enabled=false" \
          --form "issues_enabled=false" \
-         --form "wiki_enabled=false" \
+         --form "wiki_enabled=true" \
          --form "snippets_enabled=false" \
          --form "jobs_enabled=false" \
          $GITLAB_HTTP_BASEURL/api/v4/projects/${GITLAB_GROUP_NAME}%2F${GITLAB_PROJECT_NAME} \
          >/usr/local/apache2/htdocs/$GITHUB_ORGANIZATION/$LOCAL_CLONE_FOLDER/GITLAB_PROJECT_INFO.json
 
-    # archive the gitlab project (make it readonly)
+    # force the gitlab project to be unarchived
+    # because if it is archived we cannot push to the wiki git repository
     curl -s --header "Private-Token: $GITLAB_PERSONAL_ACCESS_TOKEN" -X POST \
-      $GITLAB_HTTP_BASEURL/api/v4/projects/${GITLAB_GROUP_NAME}%2F${GITLAB_PROJECT_NAME}/archive >/dev/null
+      $GITLAB_HTTP_BASEURL/api/v4/projects/${GITLAB_GROUP_NAME}%2F${GITLAB_PROJECT_NAME}/unarchive >/dev/null
 
     echo ""
   done # $GITHUB_REPOS_NAMES loop
@@ -160,14 +161,22 @@ function do_gitlab_mirrors() {
   # and push/mirror to it
   for GITLAB_PROJECT_NAME in $GITHUB_REPOS_NAMES
   do
-    echo "-> Mirror $GITHUB_CU to $GITLAB_SSH_BASEURL:$GITLAB_GROUP_NAME/$LOCAL_CLONE_FOLDER"
-    
     GITHUB_CU=$(cat /usr/local/apache2/htdocs/$GITHUB_ORGANIZATION/$GITLAB_PROJECT_NAME.cu.txt)
     LOCAL_CLONE_FOLDER=$(basename $GITHUB_CU)
-    cd /usr/local/apache2/htdocs/$GITHUB_ORGANIZATION/$LOCAL_CLONE_FOLDER
+    GITHUB_HAS_WIKI=$(cat /usr/local/apache2/htdocs/$GITHUB_ORGANIZATION/$GITLAB_PROJECT_NAME.has_wiki.txt)
+    LOCAL_WIKI_CLONE_FOLDER=$(echo $LOCAL_CLONE_FOLDER | sed 's#.git$#.wiki.git#g')
 
+    echo "-> Mirror $GITHUB_CU to $GITLAB_SSH_BASEURL:$GITLAB_GROUP_NAME/$LOCAL_CLONE_FOLDER"       
+    cd /usr/local/apache2/htdocs/$GITHUB_ORGANIZATION/$LOCAL_CLONE_FOLDER
     GIT_SSH_COMMAND="ssh -i ~/.ssh/id_rsa_$GITLAB_PROJECT_NAME" \
     git push --mirror $GITLAB_SSH_BASEURL:$GITLAB_GROUP_NAME/$LOCAL_CLONE_FOLDER
+
+    if [ $GITHUB_HAS_WIKI == "true" ]; then
+      echo "-> Mirror $GITHUB_CU (wiki) to $GITLAB_SSH_BASEURL:$GITLAB_GROUP_NAME/$LOCAL_WIKI_CLONE_FOLDER"
+      cd /usr/local/apache2/htdocs/$GITHUB_ORGANIZATION/$LOCAL_WIKI_CLONE_FOLDER
+      GIT_SSH_COMMAND="ssh -i ~/.ssh/id_rsa_$GITLAB_PROJECT_NAME" \
+      git push --mirror $GITLAB_SSH_BASEURL:$GITLAB_GROUP_NAME/$LOCAL_WIKI_CLONE_FOLDER
+    fi
 
   done # $GITHUB_REPOS_NAMES loop
 

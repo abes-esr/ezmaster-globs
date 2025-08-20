@@ -1,3 +1,5 @@
+Dépôt git archivé depuis le 20/08/2025 car les dépôts github d'abes-esr sont [archivés sur software heritage](https://archive.softwareheritage.org/browse/search/?q=abes-esr).
+
 # ezmaster-globs
 
 [![Build Status](https://travis-ci.org/Inist-CNRS/ezmaster-globs.svg?branch=master)](https://travis-ci.org/Inist-CNRS/ezmaster-globs) [![Docker Pulls](https://img.shields.io/docker/pulls/inistcnrs/ezmaster-globs.svg)](https://registry.hub.docker.com/u/inistcnrs/ezmaster-globs/)
